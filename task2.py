@@ -31,7 +31,7 @@ def init_db():
 def before_request():
   g.db = connect_db()
 
-@app.route('/')
+@app.route('/vpn')
 def list_vpns():
   if 'lat' in request.args and 'long' in request.args:
     cursor = g.db.execute('SELECT name, latitude, longitude FROM vpn')
@@ -41,22 +41,22 @@ def list_vpns():
   else:
     abort(400)
   
-@app.route('/add', methods=['GET'])
-def add_vpn():
-  if 'name' in request.args and 'lat' in request.args and 'long' in request.args:
+@app.route('/vpn/<name>', methods=['POST'])
+def add_vpn(name):
+  if 'lat' in request.args and 'long' in request.args:
     g.db.execute('INSERT INTO vpn (name, latitude, longitude) VALUES (?, ?, ?)',
-                [str(request.args['name']), float(request.args['lat']), float(request.args['long'])])
+                [str(name), float(request.args['lat']), float(request.args['long'])])
     g.db.commit()
-    return 'OK'
+    return '', 201
   else:
     abort(400)
 
-@app.route('/delete', methods=['GET'])
-def delete_vpn():
+@app.route('/vpn/<name>', methods=['DELETE'])
+def delete_vpn(name):
   if 'name' in request.args:
-    g.db.execute('DELETE FROM vpn WHERE name = ?', [request.args['name']])
+    g.db.execute('DELETE FROM vpn WHERE name = ?', [str(name)])
     g.db.commit()
-    return 'OK'
+    return '', 204
   else:
     abort(400)
 
