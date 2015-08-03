@@ -1,5 +1,6 @@
 import sqlite3
-from flask import Flask, request, g, abort
+from contextlib import closing
+from flask import Flask, request, g, abort, send_from_directory
 from flask.json import jsonify
 
 class VPN:
@@ -31,21 +32,21 @@ def init_db():
 def before_request():
   g.db = connect_db()
 
-@app.route('/vpn')
+@app.route('/vpn/', methods=['GET'])
 def list_vpns():
-  if 'lat' in request.args and 'long' in request.args:
+  if 'mylat' in request.args and 'mylong' in request.args:
     cursor = g.db.execute('SELECT name, latitude, longitude FROM vpn')
     vpns = [VPN(row[0], row[1], row[2]) for row in cursor.fetchall()]
-    vpns = sorted(vpns, key=lambda vpn: vpn.distance(float(request.args['lat']), float(request.args['long'])))
+    vpns = sorted(vpns, key=lambda vpn: vpn.distance(float(request.args['mylat']), float(request.args['mylong'])))
     return jsonify(VPNs = [{ 'name': v.name, 'latitude': v.latitude, 'longitude': v.longitude } for v in vpns])
   else:
     abort(400)
   
 @app.route('/vpn/<name>', methods=['POST'])
 def add_vpn(name):
-  if 'lat' in request.args and 'long' in request.args:
+  if 'lat' in request.form and 'long' in request.form:
     g.db.execute('INSERT INTO vpn (name, latitude, longitude) VALUES (?, ?, ?)',
-                [str(name), float(request.args['lat']), float(request.args['long'])])
+                [str(name), float(request.form['lat']), float(request.form['long'])])
     g.db.commit()
     return '', 201
   else:
@@ -53,12 +54,13 @@ def add_vpn(name):
 
 @app.route('/vpn/<name>', methods=['DELETE'])
 def delete_vpn(name):
-  if 'name' in request.args:
-    g.db.execute('DELETE FROM vpn WHERE name = ?', [str(name)])
-    g.db.commit()
-    return '', 204
-  else:
-    abort(400)
+  g.db.execute('DELETE FROM vpn WHERE name = ?', [str(name)])
+  g.db.commit()
+  return '', 204
+
+@app.route('/')
+def do_test():
+  return send_from_directory('static', 'task2test.html')
 
 @app.teardown_request
 def teardown_request(exception):
